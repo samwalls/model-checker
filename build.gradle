@@ -29,8 +29,8 @@ tasks.withType(JavaCompile) {
 	}
 
 tasks.withType(JavaCompile) {
-        sourceCompatibility = '1.7'
-        targetCompatibility = '1.7'
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
     }
     
 tasks.withType(Test) {
