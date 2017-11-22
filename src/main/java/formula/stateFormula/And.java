@@ -17,5 +17,4 @@ public class And extends StateFormula {
         right.writeToBuffer(buffer);
         buffer.append(")");
     }
-
 }

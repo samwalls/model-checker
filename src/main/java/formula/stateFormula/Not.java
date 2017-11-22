@@ -16,5 +16,4 @@ public class Not extends StateFormula {
         stateFormula.writeToBuffer(buffer);
         buffer.append(")");
     }
-
 }

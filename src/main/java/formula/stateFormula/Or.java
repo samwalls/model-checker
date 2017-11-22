@@ -17,5 +17,4 @@ public class Or extends StateFormula {
         right.writeToBuffer(buffer);
         buffer.append(")");
     }
-
 }

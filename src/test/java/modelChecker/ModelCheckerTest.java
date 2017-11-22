@@ -4,12 +4,11 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 
+import modelChecker.asctl.ASCTLModelChecker;
 import org.junit.Test;
 
 import formula.FormulaParser;
 import formula.stateFormula.StateFormula;
-import modelChecker.ModelChecker;
-import modelChecker.SimpleModelChecker;
 import model.Model;
 
 public class ModelCheckerTest {
@@ -28,10 +27,9 @@ public class ModelCheckerTest {
             StateFormula fairnessConstraint = new FormulaParser("src/test/resources/constraint1.json").parse();
             StateFormula query = new FormulaParser("src/test/resources/ctl1.json").parse();
 
-            ModelChecker mc = new SimpleModelChecker();
+            ModelChecker mc = new ASCTLModelChecker();
 
-            // TO IMPLEMENT
-            // assertTrue(mc.check(model, fairnessConstraint, query));
+             assertTrue(mc.check(model, fairnessConstraint, query));
         } catch (IOException e) {
             e.printStackTrace();
             fail(e.toString());

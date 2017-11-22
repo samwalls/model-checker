@@ -12,5 +12,4 @@ public class BoolProp extends StateFormula {
         String stringValue = (value) ? "True" : "False";
         buffer.append(" " + stringValue + " ");
     }
-
 }

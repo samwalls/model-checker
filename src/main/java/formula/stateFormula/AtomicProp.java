@@ -11,5 +11,4 @@ public class AtomicProp extends StateFormula {
     public void writeToBuffer(StringBuilder buffer) {
         buffer.append(" " + label + " ");
     }
-
 }
