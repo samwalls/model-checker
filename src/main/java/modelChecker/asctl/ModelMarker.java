@@ -6,6 +6,7 @@ import formula.pathFormula.Next;
 import formula.pathFormula.Until;
 import formula.stateFormula.*;
 import model.State;
+import model.Transition;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,13 +25,17 @@ public class ModelMarker {
         marked = new HashMap<>();
     }
 
-    public boolean isModelSatisfied(StateFormula f) {
-        StateFormula normalized = normalize(f);
+    public boolean isModelSatisfied(StateFormula f, StateFormula constraint) {
+        marked = new HashMap<>();
+        StateFormula normalizedF = normalize(f);
+        StateFormula normalizedConstraint = normalize(constraint);
+        mark(normalizedF);
+        mark(normalizedConstraint);
         // return true if all initial states are marked (under the constraint) as satisfied for the given formula
         Set<State> initialStates = model.getStates().stream().filter(State::isInit).collect(Collectors.toSet());
         boolean allMatching = true;
         for (State s : initialStates)
-            allMatching = allMatching && isSatisfied(s, normalized);
+            allMatching = allMatching && isSatisfied(s, normalizedF);
         return initialStates.size() > 0 && allMatching;
     }
 
@@ -40,7 +45,7 @@ public class ModelMarker {
      * Mark on all states whether or not the formula and it's sub-formulae are satisfied.
      * @param f the formula to mark states with
      */
-    public void mark(StateFormula f) {
+    private void mark(StateFormula f) {
         // TODO take into account action sets
         // TODO also accept constraints
         marked = new HashMap<>();
@@ -232,7 +237,7 @@ public class ModelMarker {
         return satisfied != null && satisfied.contains(f);
     }
 
-    private boolean isSatisfied(State state, StateFormula f) {
+    public boolean isSatisfied(State state, StateFormula f) {
         return isSatisfied(state.getName(), f);
     }
 
