@@ -23,7 +23,7 @@ public class Always extends PathFormula {
     public void writeToBuffer(StringBuilder buffer) {
         buffer.append(FormulaParser.ALWAYS_TOKEn);
         if (actionsIdentifier != null)
-            buffer.append(actionsIdentifier);v
+            buffer.append(actionsIdentifier);
         stateFormula.writeToBuffer(buffer);
         ;
 
