@@ -6,7 +6,6 @@ import formula.pathFormula.Next;
 import formula.pathFormula.Until;
 import formula.stateFormula.*;
 import model.State;
-import model.Transition;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -46,11 +45,7 @@ public class ModelMarker {
      * @param f the formula to mark states with
      */
     private void mark(StateFormula f) {
-        // TODO take into account action sets
-        // TODO also accept constraints
-        marked = new HashMap<>();
-        StateFormula normalized = normalize(f);
-        markHelper(normalized);
+        markHelper(f);
     }
 
     private void markHelper(StateFormula f) {
@@ -92,10 +87,11 @@ public class ModelMarker {
     private void markFor(ThereExists f) {
         if (f.pathFormula instanceof Next) {
             // of the form f = EX psi
-            StateFormula psi = ((Next)f.pathFormula).stateFormula;
+            Next next = ((Next)f.pathFormula);
+            StateFormula psi = next.stateFormula;
             markHelper(psi);
             model.getTransitions().stream()
-                    .filter(t -> isSatisfied(t.getTarget(), psi))
+                    .filter(t -> isSatisfied(t.getTarget(), psi) && !Collections.disjoint(next.getActions(), new HashSet<>(Arrays.asList(t.getActions()))))
                     .forEach(t -> setSatisfied(t.getSource(), f, true));
         } else if (f.pathFormula instanceof Until) {
             // of the form f = E(left U right)
@@ -134,7 +130,13 @@ public class ModelMarker {
             Map<String, Long> nSuccessors = new HashMap<>();
             model.getStates().forEach(s -> nSuccessors.put(s.getName(), successorCount(s)));
             // all states in toProcess are those deemed to satisfy the whole until statement
-            Set<State> toProcess = model.getStates().stream().filter(s -> isSatisfied(s, until.right)).collect(Collectors.toSet());
+            Set<State> toProcess = model.getStates().stream()
+                    .filter(s -> isSatisfied(s, until.right))
+                    .filter(s -> {
+                        // only process states in which the RHS can be satisfied via a an action from the right action set
+                        return model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && !Collections.disjoint(until.getRightActions(), Arrays.asList(t.getActions())));
+                    })
+                    .collect(Collectors.toSet());
             while (toProcess.size() > 0) {
                 State s = toProcess.iterator().next();
                 toProcess.remove(s);
@@ -143,6 +145,7 @@ public class ModelMarker {
                     // decrement the number of successors to process
                     nSuccessors.put(s.getName(), nSuccessors.get(s.getName()) - 1);
                     String pre = t.getSource();
+                    boolean successorReachableViaLeftActions = t.getTarget().equals(s.getName()) && !Collections.disjoint(until.getLeftActions(), Arrays.asList(t.getActions()));
                     if (nSuccessors.get(s.getName()) <= 0 && isSatisfied(pre, until.left) && !isSatisfied(pre, f))
                         toProcess.add(model.getState(pre));
                 });
@@ -161,7 +164,7 @@ public class ModelMarker {
      * Get an equivalent formula of f, in a normal form for marking purposes.
      * @param f the formula to get a normal form for
      */
-    private StateFormula normalize(StateFormula f) {
+    public StateFormula normalize(StateFormula f) {
         // TODO create proper action sets for reductions
         if (f instanceof BoolProp || f instanceof AtomicProp) return f;
         else if (f instanceof And) return normalize((And)f);
@@ -190,20 +193,20 @@ public class ModelMarker {
             // EF p = E(T U p)
             Eventually e = (Eventually)f.pathFormula;
             StateFormula p = e.stateFormula;
-            return new ThereExists(new Until(new BoolProp(true), p, e.getLeftActions(), e.getRightActions()));
+            return new ThereExists(new Until(new BoolProp(true), p, e.getLeftActionsIdentifier(), e.getLeftActions(), e.getRightActionsIdentifier(), e.getRightActions()));
         } else if (f.pathFormula instanceof Always) {
             // EG p = -AF(-p)
             Always g = (Always)f.pathFormula;
             StateFormula p = normalize(g.stateFormula);
-            return new Not(normalize(new ForAll(new Eventually(new Not(p), null, null))));
+            return new Not(normalize(new ForAll(new Eventually(new Not(p), g.getActionsIdentifier(), g.getActions(), g.getActionsIdentifier(), g.getActions()))));
         } else if (f.pathFormula instanceof Until) {
             // A(p U q) = -(E(-q U (-p && -q)) || EG -q)
             Until until = (Until)f.pathFormula;
             StateFormula p = normalize(until.left);
             StateFormula q = normalize(until.right);
             return new Not(new Or(
-                    new ThereExists(new Until(new Not(q), new And(new Not(p), new Not(q)), null, null)),
-                    normalize(new ThereExists(new Always(new Not(q), null)))
+                    new ThereExists(new Until(new Not(q), new And(new Not(p), new Not(q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())),
+                    normalize(new ThereExists(new Always(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())))
             ));
         }
         return f;
@@ -214,18 +217,18 @@ public class ModelMarker {
             // AF p = A(T U p)
             Eventually e = (Eventually)f.pathFormula;
             StateFormula p = normalize(e.stateFormula);
-            return new ForAll(new Until(new BoolProp(true), p, e.getLeftActions(), e.getRightActions()));
+            return new ForAll(new Until(new BoolProp(true), p, e.getLeftActionsIdentifier(), e.getLeftActions(), e.getRightActionsIdentifier(), e.getRightActions()));
         } else if (f.pathFormula instanceof Always) {
             // AG p = -EF(-p)
             Always g = (Always)f.pathFormula;
             StateFormula p = normalize(g.stateFormula);
-            return new Not(normalize(new ThereExists(new Eventually(new Not(p), null, null))));
+            return new Not(normalize(new ThereExists(new Eventually(new Not(p), g.getActionsIdentifier(), g.getActions(), g.getActionsIdentifier(), g.getActions()))));
         } else if (f.pathFormula instanceof Until) {
             // normalize the left and right
             Until u = (Until)f.pathFormula;
             StateFormula p = normalize(u.left);
             StateFormula q = normalize(u.right);
-            return new ForAll(new Until(p, q, u.getLeftActions(), u.getRightActions()));
+            return new ForAll(new Until(p, q, u.getLeftActionsIdentifier(), u.getLeftActions(), u.getRightActionsIdentifier(), u.getRightActions()));
         }
         return f;
     }

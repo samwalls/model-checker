@@ -7,9 +7,11 @@ import java.util.*;
 public class Always extends PathFormula {
     public final StateFormula stateFormula;
     private Set<String> actions = new HashSet<String>();
+    private String actionsIdentifier;
 
-    public Always(StateFormula stateFormula, Set<String> actions) {
+    public Always(StateFormula stateFormula, String actionsIdentifier, Set<String> actions) {
         this.stateFormula = stateFormula;
+        this.actionsIdentifier = actionsIdentifier;
         this.actions = actions;
     }
 
@@ -20,9 +22,14 @@ public class Always extends PathFormula {
     @Override
     public void writeToBuffer(StringBuilder buffer) {
         buffer.append(FormulaParser.ALWAYS_TOKEn);
+        if (actionsIdentifier != null)
+            buffer.append(actionsIdentifier);v
         stateFormula.writeToBuffer(buffer);
         ;
 
     }
 
+    public String getActionsIdentifier() {
+        return actionsIdentifier;
+    }
 }

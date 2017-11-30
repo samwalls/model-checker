@@ -17,7 +17,7 @@ public class ASCTLModelChecker implements ModelChecker {
         ModelMarker marker = new ModelMarker(m);
         if (!marker.isModelSatisfied(query, constraint)) {
             CounterexampleGenerator generator = new CounterexampleGenerator(marker);
-            counterexamplePath = generator.makeCounterexample();
+            counterexamplePath = generator.makeCounterexample(query, constraint);
             return false;
         }
         return true;

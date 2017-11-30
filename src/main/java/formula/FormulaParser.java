@@ -142,13 +142,13 @@ public class FormulaParser {
         char nextChar = reader.nextChar();
         switch (nextChar) {
         case ALWAYS_TOKEn:
-            return new Always(recursiveParseStateFormula(), actionSet1);
+            return new Always(recursiveParseStateFormula(), actionSet1Identifier, actionSet1);
         case NEXT_TOKEN:
             return new Next(recursiveParseStateFormula(), actionSet1);
         case EVENTUALLY_TOKEN:
             String actionSet2Identifier = parseOptionalIdentifier(false);
             Set<String> actionSet2 = getActions(actionSet2Identifier);
-            return new Eventually(recursiveParseStateFormula(), actionSet1, actionSet2);
+            return new Eventually(recursiveParseStateFormula(), actionSet1Identifier, actionSet1, actionSet2Identifier, actionSet2);
         case LEFT_BRACKET_TOKEN:
             Until until = parseUntil();
             validateNextChars(RIGHT_BRACKET_TOKEN);
@@ -166,7 +166,7 @@ public class FormulaParser {
         StateFormula rightFormula = recursiveParseStateFormula();
         Set<String> actionSet1 = getActions(actionSet1Identifier);
         Set<String> actionSet2 = getActions(actionSet2Identifier);
-        return new Until(leftFormula, rightFormula, actionSet1, actionSet2);
+        return new Until(leftFormula, rightFormula, actionSet1Identifier, actionSet1, actionSet2Identifier, actionSet2);
     }
 
     private void validateNextChars(char... chars) throws IOException {
