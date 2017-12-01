@@ -33,6 +33,9 @@ public class CounterexampleGenerator {
             if (path != null)
                 return path;
         }
+        if (initialStates.size() > 0)
+            // return a path of size one, only containing the start state
+            return searchReturn(new ComputationPathNode(initialStates.iterator().next().getName()));
         return null;
     }
 

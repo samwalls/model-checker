@@ -111,10 +111,73 @@ public class ModelCheckerTest {
     }
 
     @Test
+    public void test1CTL4Constraint1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl4.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        assertTrue(checker.check(model, constraint, f));
+    }
+
+    @Test
+    public void test1CTL4Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl4.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertFalse(checker.check(model, constraint, f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
     public void test1CTL5() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
         StateFormula f = new FormulaParser("src/test/resources/test1/ctl5.json").parse();
         assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL5Constraint1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl5.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        assertFalse(checker.check(model, constraint, f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL5Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl5.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertFalse(checker.check(model, constraint, f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL6() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl6.json").parse();
+        assertTrue(checker.check(model, new BoolProp(true), f));
+    }
+
+    @Test
+    public void test1CTL6Constraint1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl6.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        assertTrue(checker.check(model, constraint, f));
+    }
+
+    @Test
+    public void test1CTL6Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl6.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertFalse(checker.check(model, constraint, f));
         String[] counterExamplePath = checker.getTrace();
         assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
     }

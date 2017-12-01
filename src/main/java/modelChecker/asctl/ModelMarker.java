@@ -6,6 +6,7 @@ import formula.pathFormula.Next;
 import formula.pathFormula.Until;
 import formula.stateFormula.*;
 import model.State;
+import model.Transition;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +48,15 @@ public class ModelMarker {
 
     public ModelWrapper getModel() {
         return model;
+    }
+
+    /**
+     * @param a the actions associated with the state we're checking for
+     * @param b the set of actions allowed by the operator
+     * @return true if the actions in a and b have any in common
+     */
+    public static boolean actionsSatisfied(String[] a, Set<String> b) {
+        return b.size() <= 0 || !Collections.disjoint(asList(a), b);
     }
 
     //******** STATE MARKING ********//
@@ -103,7 +113,7 @@ public class ModelMarker {
             markHelper(psi);
             model.getTransitions().stream()
                     // only set states as satisfied in which the subformula holds, and can be reached via the action set
-                    .filter(t -> isSatisfied(t.getTarget(), psi) && (next.getActionSetIdentifier() == null || !Collections.disjoint(next.getActions(), new HashSet<>(asList(t.getActions())))))
+                    .filter(t -> isSatisfied(t.getTarget(), psi) && actionsSatisfied(t.getActions(), next.getActions()))
                     .filter(t -> isSatisfied(t.getTarget(), constraint) || model.getState(t.getTarget()).isInit())
                     .forEach(t -> setSatisfied(t.getSource(), f, true));
         } else if (f.pathFormula instanceof Always) {
@@ -115,7 +125,73 @@ public class ModelMarker {
     }
 
     private void markFor(ForAll f) {
-        throw new IllegalArgumentException("reduction incomplete on formula: " + f.toString() + " formulae of the form A(p U q) not accepted");
+        if (f.pathFormula instanceof Until)
+            markForForAllAlways(f);
+        else
+            throw new IllegalArgumentException("reduction incomplete on formula: " + f.toString() + " - only formulae of the form A(p U q) are accepted");
+    }
+
+    /**
+     * @param state
+     * @return the number of successor states of the given state (which must also satisfy the constraint)
+     */
+    private int countSuccessors(State state) {
+        return model.getTransitions().stream()
+                .filter(t -> t.getSource().equals(state.getName()))
+                .filter(t -> isSatisfied(t.getTarget(), constraint))
+                .collect(Collectors.toSet()).size();
+    }
+
+    private void markForForAllAlways(ForAll f) {
+        Until until = (Until)f.pathFormula;
+        markHelper(until.left);
+        markHelper(until.right);
+        Set<State> toProcess = new HashSet<>();
+        Set<State> processed = new HashSet<>();
+        Map<State, Integer> successorsToSatisfy = new HashMap<>();
+        // we can only mark a state as satisfying A(p U q) (when q is not satisfied) if all the successors also satisfy the formula
+        model.getStates().forEach(s -> successorsToSatisfy.put(s, countSuccessors(s)));
+        // get a list of states to process
+        model.getTransitions().stream()
+                .filter(t -> actionsSatisfied(t.getActions(), until.getRightActions()))
+                .filter(t -> isSatisfied(t.getTarget(), constraint))
+                .filter(t -> isSatisfied(t.getTarget(), until.right))
+                .forEach(t -> toProcess.add(model.getState(t.getTarget())));
+        // run once over the first elements of toProcess, checking for the right action set rather than the left
+        while (toProcess.size() > 0) {
+            State s = toProcess.iterator().next();
+            toProcess.remove(s);
+            setSatisfied(s, f, true);
+            processed.add(s);
+            for (Transition t : model.getTransitions().stream().filter(t -> t.getTarget().equals(s.getName())).collect(Collectors.toSet())) {
+                State predecessor = model.getState(t.getSource());
+                successorsToSatisfy.put(predecessor, successorsToSatisfy.get(predecessor) - 1);
+                boolean allSuccessorsSatisfied = successorsToSatisfy.get(predecessor) <= 0;
+                boolean inRightActions = actionsSatisfied(t.getActions(), until.getLeftActions());
+                boolean constraintSatisfied = isSatisfied(t.getTarget(), constraint);
+                boolean preSatisfiesLeft = isSatisfied(predecessor, until.left);
+                if (constraintSatisfied && allSuccessorsSatisfied && inRightActions && preSatisfiesLeft && !processed.contains(predecessor))
+                    toProcess.add(predecessor);
+            }
+        }
+        while (toProcess.size() > 0) {
+            State s = toProcess.iterator().next();
+            toProcess.remove(s);
+            setSatisfied(s, f, true);
+            processed.add(s);
+            for (Transition t : model.getTransitions().stream()
+                    .filter(t -> t.getTarget().equals(s.getName()))
+                    .collect(Collectors.toSet())) {
+                State predecessor = model.getState(t.getSource());
+                successorsToSatisfy.put(predecessor, successorsToSatisfy.get(predecessor) - 1);
+                boolean allSuccessorsSatisfied = successorsToSatisfy.get(predecessor) <= 0;
+                boolean inLeftActions = actionsSatisfied(t.getActions(), until.getLeftActions());
+                boolean constraintSatisfied = isSatisfied(t.getTarget(), constraint);
+                boolean preSatisfiesLeft = isSatisfied(predecessor, until.left);
+                if (constraintSatisfied && allSuccessorsSatisfied && inLeftActions && preSatisfiesLeft && !processed.contains(predecessor))
+                    toProcess.add(predecessor);
+            }
+        }
     }
 
     private void markForThereExistsAlways(ThereExists f) {
@@ -127,8 +203,8 @@ public class ModelMarker {
         // add states which are reachable via the specified action sets, and satisfy psi
         model.getStates().stream()
                 .filter(s -> isSatisfied(s, psi))
-                .filter(s -> isSatisfied(s, constraint))
-                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && (a.getActions().size() <= 0 || !Collections.disjoint(a.getActions(), asList(t.getActions())))))
+                .filter(s -> isSatisfied(s, constraint) || s.isInit())
+                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && actionsSatisfied(t.getActions(), a.getActions())))
                 .forEach(s -> {
                     setSatisfied(s, f, true);
                     processed.add(s.getName());
@@ -136,7 +212,7 @@ public class ModelMarker {
                     Set<State> predecessors = model.getTransitions().stream()
                             .filter(t -> t.getTarget().equals(s.getName()))
                             .filter(t -> !processed.contains(t.getSource()))
-                            .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
+                            .filter(t -> actionsSatisfied(t.getActions(), a.getActions()))
                             .map(t -> model.getState(t.getSource()))
                             .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                             .collect(Collectors.toSet());
@@ -154,7 +230,7 @@ public class ModelMarker {
             Set<State> predecessors = model.getTransitions().stream()
                     .filter(t -> t.getTarget().equals(s.getName()))
                     .filter(t -> !processed.contains(t.getSource()))
-                    .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
+                    .filter(t -> actionsSatisfied(t.getActions(), a.getActions()))
                     .map(t -> model.getState(t.getSource()))
                     .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                     .collect(Collectors.toSet());
@@ -173,7 +249,7 @@ public class ModelMarker {
         model.getStates().stream()
                 // only process states in which the RHS can be satisfied via an action from the right action set
                 .filter(s -> isSatisfied(s, until.right))
-                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && (until.getRightActionsIdentifier() == null || !Collections.disjoint(until.getRightActions(), asList(t.getActions())))))
+                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && actionsSatisfied(t.getActions(), until.getRightActions())))
                 .forEach(s -> {
                     setSatisfied(s, f, true);
                     processed.add(s.getName());
@@ -181,7 +257,7 @@ public class ModelMarker {
                     Set<State> predecessors = model.getTransitions().stream()
                             .filter(t -> t.getTarget().equals(s.getName()))
                             .filter(t -> !processed.contains(t.getSource()))
-                            .filter(t -> until.getRightActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), until.getRightActions()))
+                            .filter(t -> actionsSatisfied(t.getActions(), until.getRightActions()))
                             .map(t -> model.getState(t.getSource()))
                             .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                             .filter(predecessorState -> isSatisfied(predecessorState, until.left))
@@ -197,7 +273,7 @@ public class ModelMarker {
             Set<State> predecessors = model.getTransitions().stream()
                     .filter(t -> t.getTarget().equals(s.getName()))
                     .filter(t -> !processed.contains(t.getSource()))
-                    .filter(t -> until.getLeftActionsIdentifier() == null || !Collections.disjoint(asList(t.getActions()), until.getLeftActions()))
+                    .filter(t -> actionsSatisfied(t.getActions(), until.getLeftActions()))
                     .map(t -> model.getState(t.getSource()))
                     .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                     .filter(predecessorState -> isSatisfied(predecessorState, until.left))
@@ -239,9 +315,10 @@ public class ModelMarker {
         if (f.pathFormula instanceof Eventually) {
             // EF p = E(T U p)
             Eventually e = (Eventually)f.pathFormula;
-            return normalize(new ThereExists(new Until(new BoolProp(true), e.stateFormula, e.getLeftActionsIdentifier(), e.getLeftActions(), e.getRightActionsIdentifier(), e.getRightActions())));
+            StateFormula p = normalize(e.stateFormula);
+            return new ThereExists(new Until(new BoolProp(true), p, e.getLeftActionsIdentifier(), e.getLeftActions(), e.getRightActionsIdentifier(), e.getRightActions()));
         } else if (f.pathFormula instanceof Always) {
-            // EG p is a minimal operator, simply normalize the parameter
+            // EGa p = -A(T aUa -p)
             Always g = (Always)f.pathFormula;
             StateFormula p = normalize(g.stateFormula);
             return new ThereExists(new Always(p, g.getActionSetIdentifier1(), g.getActionSet1(), g.getActionSetIdentifier2(), g.getActionSet2()));
@@ -262,10 +339,10 @@ public class ModelMarker {
             StateFormula p = normalize(n.stateFormula);
             return new Not(new ThereExists(new Next(new Not(p), n.getActionSetIdentifier(), n.getActions())));
         } else if (f.pathFormula instanceof Eventually) {
-            // AaFb p = -EGb -p
+            // AaFb p = A(T aUb p)
             Eventually e = (Eventually)f.pathFormula;
             StateFormula p = normalize(e.stateFormula);
-            return new Not(new ThereExists(new Always(new Not(p), e.getRightActionsIdentifier(), e.getRightActions())));
+            return new ForAll(new Until(new BoolProp(true), p, e.getLeftActionsIdentifier(), e.getLeftActions(), e.getRightActionsIdentifier(), e.getRightActions()));
         } else if (f.pathFormula instanceof Always) {
             // AGa p = -E(T aUa -p)
             Always g = (Always)f.pathFormula;
@@ -273,16 +350,17 @@ public class ModelMarker {
             // only take the first action set from the always statement (an always statement with a set union cannot be created from the parsed input)
             return new Not(new ThereExists(new Until(new BoolProp(true), new Not(p), g.getActionSetIdentifier1(), g.getActionSet1(), g.getActionSetIdentifier1(), g.getActionSet1())));
         } else if (f.pathFormula instanceof Until) {
-            // A(p aUb q) = -E(-q aUb -(p || q)) && -E(-q aUb -q)
+            // A(p aUb q) is a minimal operator, normalize the parameters
             Until until = (Until)f.pathFormula;
             StateFormula p = normalize(until.left);
             StateFormula q = normalize(until.right);
-            return new And(
-                    // -E(-q aUb -(p || q)) && ...
-                    new Not(new ThereExists(new Until(new Not(q), new Not(new Or(p, q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions()))),
-                    // ... -E(-q aUb -q)
-                    new Not(new ThereExists(new Until(new Not(q), new Not(q), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())))
-            );
+            return new ForAll(new Until(p, q, until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions()));
+//            return new And(
+//                    // -E(-q aUb -(p || q)) && ...
+//                    new Not(new ThereExists(new Until(new Not(q), new Not(new Or(p, q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions()))),
+//                    // ... -E(-q aUb -q)
+//                    new Not(new ThereExists(new Until(new Not(q), new Not(q), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())))
+//            );
         }
         return f;
     }
