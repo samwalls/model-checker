@@ -104,6 +104,7 @@ public class ModelMarker {
             model.getTransitions().stream()
                     // only set states as satisfied in which the subformula holds, and can be reached via the action set
                     .filter(t -> isSatisfied(t.getTarget(), psi) && (next.getActionSetIdentifier() == null || !Collections.disjoint(next.getActions(), new HashSet<>(asList(t.getActions())))))
+                    .filter(t -> isSatisfied(t.getTarget(), constraint))
                     .forEach(t -> setSatisfied(t.getSource(), f, true));
         } else if (f.pathFormula instanceof Always) {
             markForThereExistsAlways(f);
@@ -126,6 +127,7 @@ public class ModelMarker {
         // add states which are reachable via the specified action sets, and satisfy psi
         model.getStates().stream()
                 .filter(s -> isSatisfied(s, psi))
+                .filter(s -> isSatisfied(s, constraint))
                 .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && (a.getActionsIdentifier() == null || !Collections.disjoint(a.getActions(), asList(t.getActions())))))
                 .forEach(s -> {
                     setSatisfied(s, f, true);
@@ -136,6 +138,7 @@ public class ModelMarker {
                             .filter(t -> !processed.contains(t.getSource()))
                             .filter(t -> a.getActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                             .map(t -> model.getState(t.getSource()))
+                            .filter(predecessorState -> isSatisfied(predecessorState, constraint))
                             .filter(predecessorState -> isSatisfied(predecessorState, psi))
                             .collect(Collectors.toSet());
                     toProcess.addAll(predecessors);
@@ -151,6 +154,7 @@ public class ModelMarker {
                     .filter(t -> !processed.contains(t.getSource()))
                     .filter(t -> a.getActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                     .map(t -> model.getState(t.getSource()))
+                    .filter(predecessorState -> isSatisfied(predecessorState, constraint))
                     .filter(predecessorState -> isSatisfied(predecessorState, psi))
                     .collect(Collectors.toSet());
             toProcess.addAll(predecessors);
@@ -178,6 +182,7 @@ public class ModelMarker {
                             .filter(t -> !processed.contains(t.getSource()))
                             .filter(t -> until.getRightActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), until.getRightActions()))
                             .map(t -> model.getState(t.getSource()))
+                            .filter(predecessorState -> isSatisfied(predecessorState, constraint))
                             .filter(predecessorState -> isSatisfied(predecessorState, until.left))
                             .collect(Collectors.toSet());
                     toProcess.addAll(predecessors);
@@ -193,6 +198,7 @@ public class ModelMarker {
                     .filter(t -> !processed.contains(t.getSource()))
                     .filter(t -> until.getLeftActionsIdentifier() == null || !Collections.disjoint(asList(t.getActions()), until.getLeftActions()))
                     .map(t -> model.getState(t.getSource()))
+                    .filter(predecessorState -> isSatisfied(predecessorState, constraint))
                     .filter(predecessorState -> isSatisfied(predecessorState, until.left))
                     .collect(Collectors.toSet());
             toProcess.addAll(predecessors);
