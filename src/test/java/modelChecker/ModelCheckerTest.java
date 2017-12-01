@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 
+
 import formula.stateFormula.BoolProp;
 import modelChecker.asctl.ASCTLModelChecker;
 import org.junit.Before;
@@ -272,5 +273,37 @@ public class ModelCheckerTest {
         String[] path = checker.getTrace();
         assertNotNull(path);
         assertTrue(path.length > 0);
+    }
+
+    @Test
+    public void customSimpleCTL2Fail() throws IOException{
+        Model model = Model.parseModel("src/test/resources/customSimple/simpleModel.json");
+        StateFormula f = new FormulaParser("src/test/resources/customSimple/ctlFail2.json").parse();
+        //StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
+        assertFalse(checker.check(model,new BoolProp(true),f));
+    }
+
+    @Test
+    public void customSimpleCTL1Pass() throws IOException{
+        Model model = Model.parseModel("src/test/resources/customSimple/simpleModel.json");
+        StateFormula f = new FormulaParser("src/test/resources/customSimple/ctlPass1.json").parse();
+        //StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
+        assertTrue(checker.check(model,new BoolProp(true),f));
+    }
+
+    @Test
+    public void customSimpleCTL1Fail() throws IOException{
+        Model model = Model.parseModel("src/test/resources/customSimple/simpleModel.json");
+        StateFormula f = new FormulaParser("src/test/resources/customSimple/ctlFail1.json").parse();
+        //StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
+        assertFalse(checker.check(model,new BoolProp(true),f));
+    }
+
+    @Test
+    public void customSimpleCTL2Pass() throws IOException{
+        Model model = Model.parseModel("src/test/resources/customSimple/simpleModel.json");
+        StateFormula f = new FormulaParser("src/test/resources/customSimple/ctlPass2.json").parse();
+        //StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
+        assertFalse(checker.check(model,new BoolProp(true),f));
     }
 }

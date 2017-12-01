@@ -1,0 +1,5 @@
+{
+  "formula": "A (a (p||q||a) FG (b (p&&q)))",
+  "a": ["act1", "act3", "act2"],
+  "b": ["act2"]
+}
