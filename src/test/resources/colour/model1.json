@@ -1,0 +1,71 @@
+{
+  "states": [
+    {
+      "init": true,
+      "name": "s0",
+      "label": ["white"]
+    },
+    {
+      "init": false,
+      "name": "s1",
+      "label": ["red"]
+    },
+    {
+      "init": false,
+      "name": "s2",
+      "label": ["green"]
+    },
+    {
+      "init": false,
+      "name": "s3",
+      "label": ["blue"]
+    }
+  ],
+  "transitions": [
+    {
+      "source": "s0",
+      "target": "s1",
+      "actions": ["subCyan"]
+    },
+    {
+      "source": "s0",
+      "target": "s2",
+      "actions": ["subMagenta"]
+    },
+    {
+      "source": "s0",
+      "target": "s3",
+      "actions": ["subYellow"]
+    },
+    {
+      "source": "s0",
+      "target": "s0",
+      "actions": ["addCyan"]
+    },
+    {
+      "source": "s0",
+      "target": "s0",
+      "actions": ["addMagenta"]
+    },
+    {
+      "source": "s0",
+      "target": "s0",
+      "actions": ["addYellow"]
+    },
+    {
+      "source": "s1",
+      "target": "s0",
+      "actions": ["addCyan"]
+    },
+    {
+      "source": "s2",
+      "target": "s0",
+      "actions": ["addMagenta"]
+    },
+    {
+      "source": "s3",
+      "target": "s0",
+      "actions": ["addYellow"]
+    }
+  ]
+}

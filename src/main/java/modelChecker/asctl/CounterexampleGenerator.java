@@ -3,9 +3,7 @@ package modelChecker.asctl;
 import formula.pathFormula.Always;
 import formula.pathFormula.Next;
 import formula.pathFormula.Until;
-import formula.stateFormula.ForAll;
-import formula.stateFormula.StateFormula;
-import formula.stateFormula.ThereExists;
+import formula.stateFormula.*;
 import model.State;
 import model.Transition;
 
@@ -51,6 +49,12 @@ public class CounterexampleGenerator {
         if (marker.isSatisfied(state, f)) {
             // this is not a counterexample
             return null;
+        } else if (f instanceof Not) {
+            return searchNot(state, f, constraint, node);
+        } else if (f instanceof Or) {
+            return searchOr(state, f, constraint, node);
+        } else if (f instanceof And) {
+            return searchAnd(state, f, constraint, node);
         } else if (f instanceof ThereExists) {
             if (((ThereExists) f).pathFormula instanceof Next)
                 return searchThereExistsNext(state, f, constraint, node);
@@ -63,6 +67,29 @@ public class CounterexampleGenerator {
             // counterexample found
             return searchReturn(node);
         }
+    }
+
+    private List<String> searchNot(String state, StateFormula f, StateFormula constraint, ComputationPathNode node) {
+        Not n = (Not)f;
+        return search(state, n.stateFormula, constraint, node);
+    }
+
+    private List<String> searchOr(String state, StateFormula f, StateFormula constraint, ComputationPathNode node) {
+        Or or = (Or)f;
+        List<String> retvalue = search(state, or.left, constraint, node);
+        if (retvalue != null)
+            return retvalue;
+        else
+            return search(state, or.right, constraint, node);
+    }
+
+    private List<String> searchAnd(String state, StateFormula f, StateFormula constraint, ComputationPathNode node) {
+        And and = (And)f;
+        List<String> retvalue = search(state, and.left, constraint, node);
+        if (retvalue != null)
+            return retvalue;
+        else
+            return search(state, and.right, constraint, node);
     }
 
     private List<String> searchThereExistsNext(String state, StateFormula f, StateFormula constraint, ComputationPathNode node) {

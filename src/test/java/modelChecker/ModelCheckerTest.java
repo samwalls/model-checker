@@ -237,4 +237,40 @@ public class ModelCheckerTest {
         StateFormula constraint = new FormulaParser("src/test/resources/branch/constraint2.json").parse();
         assertTrue(checker.check(model, constraint, f));
     }
+
+    //******** "COLOUR" TESTS ********//
+
+    @Test
+    public void colourCTL1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/colour/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/colour/ctl1.json").parse();
+        assertTrue(checker.check(model, new BoolProp(true), f));
+    }
+
+    @Test
+    public void colourCTL2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/colour/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/colour/ctl2.json").parse();
+        assertTrue(checker.check(model, new BoolProp(true), f));
+    }
+
+    @Test
+    public void colourCTL3() throws IOException {
+        Model model = Model.parseModel("src/test/resources/colour/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/colour/ctl3.json").parse();
+        assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] path = checker.getTrace();
+        assertNotNull(path);
+        assertEquals(1, path.length);
+    }
+
+    @Test
+    public void colourCTL4() throws IOException {
+        Model model = Model.parseModel("src/test/resources/colour/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/colour/ctl4.json").parse();
+        assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] path = checker.getTrace();
+        assertNotNull(path);
+        assertTrue(path.length > 0);
+    }
 }

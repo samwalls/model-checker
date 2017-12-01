@@ -1,0 +1,6 @@
+{
+  "formula": "AG ( !white || EsubX (( red || green ) || blue ))",
+  "add": ["addCyan", "addMagenta", "addYellow"],
+  "sub": ["subCyan", "subMagenta", "subYellow"]
+}
+

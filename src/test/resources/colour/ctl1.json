@@ -1,0 +1,5 @@
+{
+  "formula": "AF ( white )",
+  "add": ["addCyan", "addMagenta", "addYellow"],
+  "sub": ["subCyan", "subMagenta", "subYellow"]
+}
