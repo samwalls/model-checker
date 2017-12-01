@@ -18,7 +18,7 @@
       "init": false,
       "name": "s2",
       "label": [
-        "a"
+        "z"
       ]
     },
     {
@@ -65,6 +65,14 @@
       "actions": [
         "act3"
       ]
+    },
+    {
+      "source": "s2",
+      "target": "s1",
+      "actions": [
+        "act2"
+      ]
     }
+
   ]
 }

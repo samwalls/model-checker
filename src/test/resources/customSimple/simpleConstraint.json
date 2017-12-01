@@ -1,5 +1,5 @@
 {
-  "formula": "A (a FG(b (p && q))",
+  "formula": "((p||q)||r)",
   "a": ["act1"],
   "b": ["act2"],
   "c": ["act3"]

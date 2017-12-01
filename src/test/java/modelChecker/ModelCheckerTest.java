@@ -283,13 +283,13 @@ public class ModelCheckerTest {
         assertFalse(checker.check(model,new BoolProp(true),f));
     }
 
-    @Test
+    /*@Test
     public void customSimpleCTL1Pass() throws IOException{
         Model model = Model.parseModel("src/test/resources/customSimple/simpleModel.json");
         StateFormula f = new FormulaParser("src/test/resources/customSimple/ctlPass1.json").parse();
-        //StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
-        assertTrue(checker.check(model,new BoolProp(true),f));
-    }
+        StateFormula constraint = new FormulaParser("src/test/resources/customSimple/simpleConstraint.json").parse();
+        assertTrue(checker.check(model,constraint,f));
+    }*/
 
     //Test of a ctl that cant be parsed.
     @Test(expected = IOException.class)
