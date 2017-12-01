@@ -97,14 +97,14 @@ public class ModelMarker {
 
     private void markFor(ThereExists f) {
         if (f.pathFormula instanceof Next) {
-            // of the form f = EX psi
+            // of the form f = EXb psi
             Next next = ((Next) f.pathFormula);
             StateFormula psi = next.stateFormula;
             markHelper(psi);
             model.getTransitions().stream()
                     // only set states as satisfied in which the subformula holds, and can be reached via the action set
                     .filter(t -> isSatisfied(t.getTarget(), psi) && (next.getActionSetIdentifier() == null || !Collections.disjoint(next.getActions(), new HashSet<>(asList(t.getActions())))))
-                    .filter(t -> isSatisfied(t.getTarget(), constraint))
+                    .filter(t -> isSatisfied(t.getTarget(), constraint) || model.getState(t.getTarget()).isInit())
                     .forEach(t -> setSatisfied(t.getSource(), f, true));
         } else if (f.pathFormula instanceof Always) {
             markForThereExistsAlways(f);
@@ -138,7 +138,7 @@ public class ModelMarker {
                             .filter(t -> !processed.contains(t.getSource()))
                             .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                             .map(t -> model.getState(t.getSource()))
-                            .filter(predecessorState -> isSatisfied(predecessorState, constraint))
+                            .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                             .collect(Collectors.toSet());
                     toProcess.addAll(predecessors);
                 });
@@ -156,7 +156,7 @@ public class ModelMarker {
                     .filter(t -> !processed.contains(t.getSource()))
                     .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                     .map(t -> model.getState(t.getSource()))
-                    .filter(predecessorState -> isSatisfied(predecessorState, constraint))
+                    .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                     .collect(Collectors.toSet());
             toProcess.addAll(predecessors);
         }
@@ -183,7 +183,7 @@ public class ModelMarker {
                             .filter(t -> !processed.contains(t.getSource()))
                             .filter(t -> until.getRightActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), until.getRightActions()))
                             .map(t -> model.getState(t.getSource()))
-                            .filter(predecessorState -> isSatisfied(predecessorState, constraint))
+                            .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                             .filter(predecessorState -> isSatisfied(predecessorState, until.left))
                             .collect(Collectors.toSet());
                     toProcess.addAll(predecessors);
@@ -199,15 +199,11 @@ public class ModelMarker {
                     .filter(t -> !processed.contains(t.getSource()))
                     .filter(t -> until.getLeftActionsIdentifier() == null || !Collections.disjoint(asList(t.getActions()), until.getLeftActions()))
                     .map(t -> model.getState(t.getSource()))
-                    .filter(predecessorState -> isSatisfied(predecessorState, constraint))
+                    .filter(predecessorState -> isSatisfied(predecessorState, constraint) || predecessorState.isInit())
                     .filter(predecessorState -> isSatisfied(predecessorState, until.left))
                     .collect(Collectors.toSet());
             toProcess.addAll(predecessors);
         }
-    }
-
-    private long successorCount(State s) {
-        return model.getTransitions().stream().filter(t -> t.getSource().equals(s.getName())).count();
     }
 
     //******** FORMULA NORMALIZATION ********//
@@ -277,19 +273,16 @@ public class ModelMarker {
             // only take the first action set from the always statement (an always statement with a set union cannot be created from the parsed input)
             return new Not(new ThereExists(new Until(new BoolProp(true), new Not(p), g.getActionSetIdentifier1(), g.getActionSet1(), g.getActionSetIdentifier1(), g.getActionSet1())));
         } else if (f.pathFormula instanceof Until) {
-            // A(p aUb q) = -(E(-q aUb -(p || q)) || EGa(EXb -q))
+            // A(p aUb q) = -E(-q aUb -(p || q)) && -E(-q aUb -q)
             Until until = (Until)f.pathFormula;
             StateFormula p = normalize(until.left);
             StateFormula q = normalize(until.right);
-            if (p instanceof BoolProp && ((BoolProp)p).value) {
-                // if p is true, then this reduces down a bit further
-                // A(T U p) = AF p = -EG -p
-                return new Not(new ThereExists(new Always(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())));
-            }
-            return new Not(new Or( // -(E(-q aUb -(p || q)) || ...
-                    new ThereExists(new Until(new Not(q), new Not(new Or(p, q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())),
-                    new ThereExists(new Always(new ThereExists(new Next(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())), until.getLeftActionsIdentifier(), until.getLeftActions()))
-            ));
+            return new And(
+                    // -E(-q aUb -(p || q)) && ...
+                    new Not(new ThereExists(new Until(new Not(q), new Not(new Or(p, q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions()))),
+                    // ... -E(-q aUb -q)
+                    new Not(new ThereExists(new Until(new Not(q), new Not(q), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())))
+            );
         }
         return f;
     }

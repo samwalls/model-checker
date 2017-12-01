@@ -38,7 +38,7 @@
     {
       "init": false,
       "name": "s7",
-      "label": ["p"]
+      "label": ["p", "neverq"]
     }
   ],
   "transitions": [

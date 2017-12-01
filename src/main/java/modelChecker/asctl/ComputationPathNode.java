@@ -17,14 +17,15 @@ public class ComputationPathNode {
         children = new HashMap<>();
     }
 
-    public void addChild(Set<String> actions, String next) {
+    public ComputationPathNode addChild(Set<String> actions, String next) {
         ComputationPathNode newNode = new ComputationPathNode(next);
         newNode.parent = this;
         children.put(actions, newNode);
+        return newNode;
     }
 
-    public void addChild(String[] actions, String next) {
-        addChild(new HashSet<>(Arrays.asList(actions)), next);
+    public ComputationPathNode addChild(String[] actions, String next) {
+        return addChild(new HashSet<>(Arrays.asList(actions)), next);
     }
 
     public ComputationPathNode getChild(Set<String> actions) {

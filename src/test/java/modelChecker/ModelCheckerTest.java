@@ -22,28 +22,10 @@ public class ModelCheckerTest {
         checker = new ASCTLModelChecker();
     }
 
-    /*
-     * An example of how to set up and call the model building methods and make
-     * a call to the model checker itself. The contents of model.json,
-     * constraint1.json and ctl.json are just examples, you need to add new
-     * models and formulas for the mutual exclusion task.
-     */
     @Test
-    public void buildAndCheckModel() throws IOException {
-        Model model = Model.parseModel("src/test/resources/model1.json");
-        StateFormula f = new FormulaParser("src/test/resources/ctl1.json").parse();
-        StateFormula constraint = new FormulaParser("src/test/resources/constraint1.json").parse();
-        assertFalse(checker.check(model, constraint, f));
-    }
-
-    @Test
-    public void testBasicCounterexample() throws IOException {
+    public void test1CTL1() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
         StateFormula f = new FormulaParser("src/test/resources/test1/ctl1.json").parse();
-        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
-        // we are searching for A(p aUb q)
-        // this should pass with the constraint, the constraint "!neverq" implies that we only search paths that aren't labelled neverq
-        assertTrue(checker.check(model, constraint, f));
         // this should fail without a constraint (the for-all statement no longer holds without constraining the paths)
         assertFalse(checker.check(model, new BoolProp(true), f));
         String[] counterExamplePath = checker.getTrace();
@@ -51,11 +33,19 @@ public class ModelCheckerTest {
     }
 
     @Test
-    public void testBasicThereExistsUntil() throws IOException {
+    public void test1CLT1Constraint1() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
-        StateFormula f = new FormulaParser("src/test/resources/test1/ctl2.json").parse();
-        assertTrue(checker.check(model, new BoolProp(true), f));
-        // if we now constrain the checking to only look at paths where the there exists statement is bound to fail, it should fail
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl1.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        // we are searching for A(p aUb q)
+        // this should pass with the constraint, the constraint "!neverq" implies that we only search paths that aren't labelled neverq
+        assertTrue(checker.check(model, constraint, f));
+    }
+
+    @Test
+    public void test1CLT1Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl1.json").parse();
         StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
         assertFalse(checker.check(model, constraint, f));
         String[] counterExamplePath = checker.getTrace();
@@ -63,23 +53,96 @@ public class ModelCheckerTest {
     }
 
     @Test
-    public void testBasicThereExistsAlways() throws IOException {
+    public void test1CTL2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl2.json").parse();
+        assertTrue(checker.check(model, new BoolProp(true), f));
+    }
+
+    @Test
+    public void test1CTL2Constraint1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl2.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        assertTrue(checker.check(model, constraint, f));
+    }
+
+    @Test
+    public void test1CTL2Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl2.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        // if we now constrain the checking to only look at paths where the there exists statement is bound to fail, it should fail
+        assertFalse(checker.check(model, constraint, f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL3() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
         StateFormula f = new FormulaParser("src/test/resources/test1/ctl3.json").parse();
         assertTrue(checker.check(model, new BoolProp(true), f));
     }
 
     @Test
-    public void testBasicThereExistsAlwaysWithActionSet() throws IOException {
+    public void test1CTL3Constraint1() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
-        StateFormula f = new FormulaParser("src/test/resources/test1/ctl5.json").parse();
-        assertFalse(checker.check(model, new BoolProp(true), f));
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl3.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertTrue(checker.check(model, constraint, f));
     }
 
     @Test
-    public void testBasicThereExistsEventually() throws IOException {
+    public void test1CTL3Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl3.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertTrue(checker.check(model, constraint, f));
+    }
+
+    @Test
+    public void test1CTL4() throws IOException {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
         StateFormula f = new FormulaParser("src/test/resources/test1/ctl4.json").parse();
         assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL5() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl5.json").parse();
+        assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL8() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl8.json").parse();
+        assertFalse(checker.check(model, new BoolProp(true), f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL8Constraint1() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl8.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
+        assertFalse(checker.check(model, constraint, f));
+        String[] counterExamplePath = checker.getTrace();
+        assertTrue("expected counter example path to be non-empty", counterExamplePath.length > 0);
+    }
+
+    @Test
+    public void test1CTL8Constraint2() throws IOException {
+        Model model = Model.parseModel("src/test/resources/test1/model1.json");
+        StateFormula f = new FormulaParser("src/test/resources/test1/ctl8.json").parse();
+        StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint2.json").parse();
+        assertTrue(checker.check(model, constraint, f));
     }
 }

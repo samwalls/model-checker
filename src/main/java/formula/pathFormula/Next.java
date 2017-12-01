@@ -22,9 +22,9 @@ public class Next extends PathFormula {
     @Override
     public void writeToBuffer(StringBuilder buffer) {
         buffer.append(FormulaParser.NEXT_TOKEN);
-        stateFormula.writeToBuffer(buffer);
         if (actionSetIdentifier != null)
             buffer.append(actionSetIdentifier);
+        stateFormula.writeToBuffer(buffer);
     }
 
     public String getActionSetIdentifier() {
