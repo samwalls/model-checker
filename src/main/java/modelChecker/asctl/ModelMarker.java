@@ -39,10 +39,10 @@ public class ModelMarker {
         mark(normalizedF);
         // return true if all initial states are marked (under the constraint) as satisfied for the given formula
         Set<State> initialStates = model.getStates().stream().filter(State::isInit).collect(Collectors.toSet());
-        boolean allMatching = true;
         for (State s : initialStates)
-            allMatching = allMatching && isSatisfied(s, normalizedF);
-        return initialStates.size() > 0 && allMatching;
+            if (!isSatisfied(s, normalizedF))
+                return false;
+        return true;
     }
 
     public ModelWrapper getModel() {
@@ -128,18 +128,17 @@ public class ModelMarker {
         model.getStates().stream()
                 .filter(s -> isSatisfied(s, psi))
                 .filter(s -> isSatisfied(s, constraint))
-                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && (a.getActionsIdentifier() == null || !Collections.disjoint(a.getActions(), asList(t.getActions())))))
+                .filter(s -> model.getTransitions().stream().anyMatch(t -> t.getTarget().equals(s.getName()) && (a.getActions().size() <= 0 || !Collections.disjoint(a.getActions(), asList(t.getActions())))))
                 .forEach(s -> {
                     setSatisfied(s, f, true);
                     processed.add(s.getName());
-                    // add all predecessors which reach this state via the action sets and satisfy psi
+                    // add all predecessors which reach this state via the action sets
                     Set<State> predecessors = model.getTransitions().stream()
                             .filter(t -> t.getTarget().equals(s.getName()))
                             .filter(t -> !processed.contains(t.getSource()))
-                            .filter(t -> a.getActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
+                            .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                             .map(t -> model.getState(t.getSource()))
                             .filter(predecessorState -> isSatisfied(predecessorState, constraint))
-                            .filter(predecessorState -> isSatisfied(predecessorState, psi))
                             .collect(Collectors.toSet());
                     toProcess.addAll(predecessors);
                 });
@@ -148,14 +147,16 @@ public class ModelMarker {
             toProcess.remove(s);
             setSatisfied(s, f, true);
             processed.add(s.getName());
-            // add all predecessors which reach this state via the action sets and satisfy psi
+            // if this state does not satisfy psi, do not add its predecessors
+            if (!isSatisfied(s, psi))
+                continue;
+            // add all predecessors which reach this state via the action sets
             Set<State> predecessors = model.getTransitions().stream()
                     .filter(t -> t.getTarget().equals(s.getName()))
                     .filter(t -> !processed.contains(t.getSource()))
-                    .filter(t -> a.getActionsIdentifier() == null || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
+                    .filter(t -> a.getActions().size() <= 0 || !Collections.disjoint(Arrays.asList(t.getActions()), a.getActions()))
                     .map(t -> model.getState(t.getSource()))
                     .filter(predecessorState -> isSatisfied(predecessorState, constraint))
-                    .filter(predecessorState -> isSatisfied(predecessorState, psi))
                     .collect(Collectors.toSet());
             toProcess.addAll(predecessors);
         }
@@ -247,7 +248,7 @@ public class ModelMarker {
             // EG p is a minimal operator, simply normalize the parameter
             Always g = (Always)f.pathFormula;
             StateFormula p = normalize(g.stateFormula);
-            return new ThereExists(new Always(p, g.getActionsIdentifier(), g.getActions()));
+            return new ThereExists(new Always(p, g.getActionSetIdentifier1(), g.getActionSet1(), g.getActionSetIdentifier2(), g.getActionSet2()));
         } else if (f.pathFormula instanceof Until) {
             // E(p U q) is a minimal operator, simply normalize the left and right
             Until u = (Until)f.pathFormula;
@@ -265,24 +266,29 @@ public class ModelMarker {
             StateFormula p = normalize(n.stateFormula);
             return new Not(new ThereExists(new Next(new Not(p), n.getActionSetIdentifier(), n.getActions())));
         } else if (f.pathFormula instanceof Eventually) {
-            // AF p = -EG -p
+            // AaFb p = -EGb -p
             Eventually e = (Eventually)f.pathFormula;
             StateFormula p = normalize(e.stateFormula);
-            // further reduce this
             return new Not(new ThereExists(new Always(new Not(p), e.getRightActionsIdentifier(), e.getRightActions())));
         } else if (f.pathFormula instanceof Always) {
-            // AG p = -E(T U -p)
+            // AGa p = -E(T aUa -p)
             Always g = (Always)f.pathFormula;
             StateFormula p = normalize(g.stateFormula);
-            return new Not(new ThereExists(new Until(new BoolProp(true), new Not(p), g.getActionsIdentifier(), g.getActions(), g.getActionsIdentifier(), g.getActions())));
+            // only take the first action set from the always statement (an always statement with a set union cannot be created from the parsed input)
+            return new Not(new ThereExists(new Until(new BoolProp(true), new Not(p), g.getActionSetIdentifier1(), g.getActionSet1(), g.getActionSetIdentifier1(), g.getActionSet1())));
         } else if (f.pathFormula instanceof Until) {
-            // A(p U q) = -(E(-q U (-p && -q)) || EG -q)
+            // A(p aUb q) = -(E(-q aUb -(p || q)) || EGa(EXb -q))
             Until until = (Until)f.pathFormula;
             StateFormula p = normalize(until.left);
             StateFormula q = normalize(until.right);
-            return new Not(new Or(
-                    new ThereExists(new Until(new Not(q), new And(new Not(p), new Not(q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())),
-                    normalize(new ThereExists(new Always(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())))
+            if (p instanceof BoolProp && ((BoolProp)p).value) {
+                // if p is true, then this reduces down a bit further
+                // A(T U p) = AF p = -EG -p
+                return new Not(new ThereExists(new Always(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())));
+            }
+            return new Not(new Or( // -(E(-q aUb -(p || q)) || ...
+                    new ThereExists(new Until(new Not(q), new Not(new Or(p, q)), until.getLeftActionsIdentifier(), until.getLeftActions(), until.getRightActionsIdentifier(), until.getRightActions())),
+                    new ThereExists(new Always(new ThereExists(new Next(new Not(q), until.getRightActionsIdentifier(), until.getRightActions())), until.getLeftActionsIdentifier(), until.getLeftActions()))
             ));
         }
         return f;

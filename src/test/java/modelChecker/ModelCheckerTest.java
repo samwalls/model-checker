@@ -41,7 +41,7 @@ public class ModelCheckerTest {
         Model model = Model.parseModel("src/test/resources/test1/model1.json");
         StateFormula f = new FormulaParser("src/test/resources/test1/ctl1.json").parse();
         StateFormula constraint = new FormulaParser("src/test/resources/test1/constraint1.json").parse();
-        // we are searching for A(p U q)
+        // we are searching for A(p aUb q)
         // this should pass with the constraint, the constraint "!neverq" implies that we only search paths that aren't labelled neverq
         assertTrue(checker.check(model, constraint, f));
         // this should fail without a constraint (the for-all statement no longer holds without constraining the paths)
