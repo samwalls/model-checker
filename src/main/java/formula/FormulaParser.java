@@ -144,7 +144,7 @@ public class FormulaParser {
         case ALWAYS_TOKEn:
             return new Always(recursiveParseStateFormula(), actionSet1Identifier, actionSet1);
         case NEXT_TOKEN:
-            return new Next(recursiveParseStateFormula(), actionSet1);
+            return new Next(recursiveParseStateFormula(), actionSet1Identifier, actionSet1);
         case EVENTUALLY_TOKEN:
             String actionSet2Identifier = parseOptionalIdentifier(false);
             Set<String> actionSet2 = getActions(actionSet2Identifier);

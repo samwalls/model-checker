@@ -2,6 +2,7 @@ package model;
 
 import modelChecker.asctl.ModelWrapper;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -63,5 +64,10 @@ public class State {
      * */
     public String[] getLabel() {
 	    return label;
+    }
+
+    @Override
+    public String toString() {
+        return name + " " + Arrays.toString(label);
     }
 }

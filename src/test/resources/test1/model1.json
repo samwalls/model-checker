@@ -1,0 +1,81 @@
+{
+  "states": [
+    {
+      "init": true,
+      "name": "s0",
+      "label": ["p"]
+    },
+    {
+      "init": false,
+      "name": "s1",
+      "label": ["p"]
+    },
+    {
+      "init": false,
+      "name": "s2",
+      "label": ["p"]
+    },
+    {
+      "init": false,
+      "name": "s3",
+      "label": ["q"]
+    },
+    {
+      "init": false,
+      "name": "s4",
+      "label": ["p"]
+    },
+    {
+      "init": false,
+      "name": "s5",
+      "label": ["q"]
+    },
+    {
+      "init": false,
+      "name": "s6",
+      "label": ["p", "neverq"]
+    },
+    {
+      "init": false,
+      "name": "s7",
+      "label": ["p"]
+    }
+  ],
+  "transitions": [
+    {
+      "source": "s0",
+      "target": "s1",
+      "actions": ["a"]
+    },
+    {
+      "source": "s1",
+      "target": "s2",
+      "actions": ["a"]
+    },
+    {
+      "source": "s2",
+      "target": "s3",
+      "actions": ["b"]
+    },
+    {
+      "source": "s0",
+      "target": "s4",
+      "actions": ["a"]
+    },
+    {
+      "source": "s4",
+      "target": "s5",
+      "actions": ["b"]
+    },
+    {
+      "source": "s0",
+      "target": "s6",
+      "actions": ["a"]
+    },
+    {
+      "source": "s6",
+      "target": "s7",
+      "actions": ["b"]
+    }
+  ]
+}

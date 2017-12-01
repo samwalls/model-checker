@@ -2,14 +2,13 @@ package modelChecker.asctl;
 
 import formula.stateFormula.*;
 import model.Model;
-import model.Transition;
 import modelChecker.ModelChecker;
 
 import java.util.List;
 
 public class ASCTLModelChecker implements ModelChecker {
 
-    private List<Transition> counterexamplePath;
+    private List<String> counterexamplePath;
 
     @Override
     public boolean check(Model model, StateFormula constraint, StateFormula query) {
@@ -25,7 +24,7 @@ public class ASCTLModelChecker implements ModelChecker {
 
     @Override
     public String[] getTrace() {
-        // TODO turn counterexamplePath into String[]
-        return null;
+        String[] array = new String[counterexamplePath.size()];
+        return counterexamplePath.toArray(array);
     }
 }
