@@ -1,0 +1,101 @@
+{
+  "states": [
+    {
+      "init": true,
+      "name": "s0",
+      "label": ["start"]
+    },
+    {
+      "init": false,
+      "name": "s1",
+      "label": ["wait1"]
+    },
+    {
+      "init": false,
+      "name": "s2",
+      "label": ["crit1"]
+    },
+    {
+      "init": false,
+      "name": "s3",
+      "label": ["wait2"]
+    },
+    {
+      "init": false,
+      "name": "s4",
+      "label": ["crit2"]
+    },
+    {
+      "init": false,
+      "name": "s5",
+      "label": ["wait1", "wait2"]
+    },
+    {
+      "init": false,
+      "name": "s6",
+      "label": ["crit1", "wait2"]
+    },
+    {
+      "init": false,
+      "name": "s7",
+      "label": ["wait1", "crit2"]
+    }
+  ],
+  "transitions": [
+    {
+      "source": "s0",
+      "target": "s1",
+      "actions": ["act1"]
+    },
+    {
+      "source": "s0",
+      "target": "s3",
+      "actions": ["act2"]
+    },
+    {
+      "source": "s1",
+      "target": "s2",
+      "actions": ["act3"]
+    },
+    {
+      "source": "s3",
+      "target": "s4",
+      "actions": ["act4"]
+    },
+    {
+      "source": "s1",
+      "target": "s5",
+      "actions": ["act5"]
+    },
+    {
+      "source": "s3",
+      "target": "s5",
+      "actions": ["act6"]
+    },
+    {
+      "source": "s2",
+      "target": "s6",
+      "actions": ["act7"]
+    },
+    {
+      "source": "s5",
+      "target": "s6",
+      "actions": ["act8"]
+    },
+    {
+      "source": "s4",
+      "target": "s7",
+      "actions": ["act8"]
+    },
+    {
+      "source": "s2",
+      "target": "s0",
+      "actions": ["act9"]
+    },
+    {
+      "source": "s4",
+      "target": "s0",
+      "actions": ["act10"]
+    }
+  ]
+}
