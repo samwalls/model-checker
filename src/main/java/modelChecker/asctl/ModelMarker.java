@@ -216,7 +216,6 @@ public class ModelMarker {
      * @param f the formula to get a normal form for
      */
     public StateFormula normalize(StateFormula f) {
-        // TODO create proper action sets for reductions
         if (f instanceof BoolProp || f instanceof AtomicProp) return f;
         else if (f instanceof And) return normalize((And)f);
         else if (f instanceof Or) return normalize((Or)f);

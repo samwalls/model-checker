@@ -25,15 +25,13 @@ public class CounterexampleGenerator {
         StateFormula normalizedF = marker.normalize(formula);
         StateFormula normalizedConstraint = marker.normalize(constraint);
         Set<State> initialStates = marker.getModel().getStates().stream().filter(State::isInit).collect(Collectors.toSet());
-        List<String> path = null;
+        List<String> path;
         for (State s : initialStates) {
              path = search(s.getName(), normalizedF, normalizedConstraint, new ComputationPathNode(s.getName()), null);
             if (path != null)
-                break;
+                return path;
         }
-        if (path == null)
-            return null;
-        return path;
+        return null;
     }
 
     /**
@@ -57,16 +55,17 @@ public class CounterexampleGenerator {
 
     private List<String> searchUntil(String state, StateFormula f, StateFormula constraint, ComputationPathNode node, String[] lastActions) {
         Until until = f instanceof ForAll ? (Until)(((ForAll)f).pathFormula) : (Until)(((ThereExists)f).pathFormula);
-        if (!marker.isSatisfied(state, until.right) || !marker.isSatisfied(state, until.left)) {
-            if (until.right instanceof ForAll || until.right instanceof ThereExists)
-                return searchUntil(state, until.right, constraint, node, lastActions);
-            // if left or right doesn't hold, this is the counterexample
+        boolean leftSatisfied = marker.isSatisfied(state, until.left);
+        boolean rightSatisfied = marker.isSatisfied(state, until.right);
+        if (!leftSatisfied && !rightSatisfied) {
+            // if left and right both do not hold, this is the counterexample
             return searchReturn(node);
-        } else if (marker.isSatisfied(state, until.left)) {
-            // if left does hold, call search on all children which do not satisfy the formula
+        } else if (leftSatisfied && !rightSatisfied) {
+            // left _does_ hold, call search on all children which do not satisfy the formula (and _do_ satisfy the constraint)
             Set<Transition> next = marker.getModel().getTransitions().stream()
                     .filter(t -> t.getSource().equals(state))
                     .filter(t -> !marker.isSatisfied(t.getTarget(), f))
+                    .filter(t -> marker.isSatisfied(t.getTarget(), constraint))
                     .collect(Collectors.toSet());
             for (Transition t : next) {
                 node.addChild(t.getActions(), t.getTarget());
@@ -75,6 +74,8 @@ public class CounterexampleGenerator {
                 if (retValue != null)
                     return retValue;
             }
+            // if we reach here, no child could provide a counterexample, this is the counterexample
+            return searchReturn(node);
         }
         // this is definitely not a counterexample path
         return null;
@@ -82,7 +83,7 @@ public class CounterexampleGenerator {
 
     private List<String> searchReturn(ComputationPathNode node) {
         List<String> statePath = new ArrayList<>();
-        while (node.getParent() != null) {
+        while (node != null) {
             statePath.add(node.getState());
             node = node.getParent();
         }
