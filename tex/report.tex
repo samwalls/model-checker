@@ -1,0 +1,150 @@
+\documentclass[]{article}
+\usepackage{times}
+\usepackage{geometry}
+\usepackage{dsfont}
+\usepackage{amsmath, amssymb}
+\usepackage{hyperref}
+\usepackage{pgf}
+\usepackage{tikz}
+\usepackage{subfig}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{filecontents}
+\usepackage{listings}
+\usepackage[round, sort, numbers]{natbib}
+
+\lstset{
+	basicstyle=\small\ttfamily,
+	columns=flexible,
+	breaklines=true,
+	numbers=left,
+	stepnumber=1,
+	showstringspaces=false,
+	frame=single
+}
+
+% useful things:
+
+% code listing
+%\begin{lstlisting}[frame=single, language=bash]
+%\end{lstlisting}
+
+% centered image figure
+%\begin{figure}[!htb]
+%	\centering
+%	\includegraphics[width=6in]{image.png}
+%	\caption{}\label{}
+%\end{figure}
+
+%opening
+\title{CS4052\\Logic \& Software Verification\vspace*{1\baselineskip}\\\emph{A Simple Model Checker}}
+\author{
+Matriculation IDs:\vspace*{1\baselineskip}\\
+150013828\vspace*{1\baselineskip}\\
+140009857}
+
+\begin{document}
+
+\maketitle
+
+%\begin{abstract}
+%\end{abstract}
+
+\noindent
+
+\section{Overview}
+This report outlines the solution to the specification: to build a model checker for the defined \emph{asCTL}, "action-state CTL" logic.
+
+\section{Building \& Running}\label{sec:build}
+
+In order to run the unit tests which are discussed further in section \ref{sec:testing}, one should run the following via the provided gradle wrapper:
+% code listing
+\begin{lstlisting}[frame=single, language=bash]
+./gradlew test
+\end{lstlisting}
+
+And the build will pass if all the unit tests do so as well.
+
+\section{Design \& Implementation}\label{sec:design}
+
+The structure of the model checker is built into two main phases: model checking; and counterexample production. The labeling algorithm (slightly adapted for asCTL's semantics) computes whether or not a given model satisfies some asCTL formulae - as well as a constraint. The computed values left behind from the labeling algorithm are subsequently useful in the counterexample production phase. To begin with, we know that we shouldn't even begin looking for a counterexample if the implemented labeling algorithm computes the input formula as satisfied under the constraint.
+
+\subsection{\emph{The Labeling Algorithm}}
+
+As it is presented, the labeling algorithm implemented in the solution is adapted from section 3 of \citeauthor{Berard:2010:SSV:1965314}'s excellent book, "Systems and Software Verification" \cite{Berard:2010:SSV:1965314}. The algorithm is cited by Berard et. al. as taking somewhere in the order of $O(|Q| + |T|)$ in time complexity where $Q$ is the number of states, and $T$ is the number of transitions in the model being verified. Of course, it remains to be seen if the presented implementation is even similar to this.
+
+The algorithm starts by reducing the input formula, such that it can be recursively "marked" for in a minimal set of cases. By \emph{marking} a formula, we mark every state in the model which satisfies it. The process of checking whether a formula is properly satisfied in a state involves recursing into the marking algorithm again on sub-formulae, for particularly chosen states for the case in mind.
+\\\\
+Given a model, as they are defined in this solution, i.e. a \emph{transition system} $$M = (S, Act, T, I, AP, L)$$ the aforementioned minimal cases for the input formula $\phi$ (where sub-formula are denoted $\psi$...), on a model $M$ can be listed as follows:
+\begin{enumerate}
+	\item $\phi \equiv P$ where $P \in AP(M)$ is an \emph{atomic proposition}
+    \item $\phi \equiv \lnot \psi$ for some other sub-formula $\psi$
+    \item $\phi \equiv \psi_1 \land \psi_2$
+    \item\label{sec:design:minimal_ctl_next} $\phi \equiv EX\psi$
+    \item\label{sec:design:minimal_ctl_e_until} $\phi \equiv E \psi_1 U \psi_2$
+    \item\label{sec:design:minimal_ctl_a_until} $\phi \equiv A \psi_1 U \psi_2$
+\end{enumerate}
+
+The operators: $\lnot$, $EX$, $E[\psi_1 U \psi_2]$, and $A[\psi_1 U \psi_2]$ form a \emph{minimal operator set} - all formula (in regular CTL) can be derived to these. However, for asCTL the operators work slightly differently - see section \ref{sec:design:asctl_semantics} for more.
+\\\\
+Once the labeling algorithm is finished, one can simply \emph{look up} whether or not a formula holds for all states in the initial state set $I$; if so, the model is satisfied.
+
+\subsection{Constraints}
+Given a working \emph{marking} facility, verifying whether a constraint holds in any given state is also trivial. In the case of the particular setup we employ, the constraint is marked \emph{first}, and then the query formula. While marking, the constraint $\eta$ limits the successor and predecessor nodes which are subsequently marked when marking for cases \ref{sec:design:minimal_ctl_next}, \ref{sec:design:minimal_ctl_e_until}, and \ref{sec:design:minimal_ctl_a_until}. If the predecessor or successor satisfies the constraint, then it is evaluated, otherwise it is ignored.
+
+\subsection{\emph{asCTL} Semantics}\label{sec:design:asctl_semantics}
+In asCTL, the path operators may have \emph{action set restrictions} applied to them; and this has been left open to interpretation in the specification. For the provided implementation, the following equivalences can be made:
+$$AG_A \psi \equiv \lnot E (T _AU_A \lnot \psi)$$
+$$A_AF_B \psi \equiv A (T _AU_B \psi)$$
+$$AX_A \psi \equiv \lnot E X_A \lnot\psi$$
+$$EG_A \psi \equiv \lnot A ( T _AU_A \lnot \psi)$$
+$$E_AF_B \psi \equiv E ( T _AU_B \psi)$$
+
+If one looks at the source file "src/main/java/modelChecker/asctl/ModelMarker.java", one will find the \emph{ModelMarker} class which implements both the functionality of the marker for the labeling algorithm, as well as a set of "normalization" functions, which recursively transform a formula into the normal form required for analysis. The aforementioned normalization functions take the form exactly of the equivalences outlined above.
+\\\\
+\paragraph{Action Set Restrictions}
+The restriction of action sets for $X_A\psi$ imply that the formula is only satisfied on all states $s$ such that in every $t \in T$ where $t = (s, a, s')$ and $a \in A(M)$; $s, s' \in S(M)$ and $\psi$ is satisfied on state $s'$.
+
+The restrictions of action sets for formulae of the form $_AF_B$ is fairly straight forward given the above equivalences $E_AF_B \psi \equiv E ( T _AU_B \psi)$, and $A_AF_B \psi \equiv A (T _AU_B \psi)$. $T$ (true) holds in every state, moving along via actions in $A$, until an action in $B$ leads to a state in which $\psi$ holds. This brings about the semantics of "eventually" we are familiar with.
+
+The restrictions of action sets for formulae of the form $G_A$ can be observed from the equivalences $AG_A \psi \equiv \lnot E (T _AU_A \lnot \psi)$, and $EG_A \psi \equiv \lnot A ( T _AU_A \lnot \psi)$. We only care about one set of actions. Granted, it \emph{could be defined} as being: always via actions in $A$, until an action in $B$ - it seems like it would not be useful.
+
+\subsection{Finding Counterexample Traces}
+Once marking is finished, the counterexample generator searches from all initial states, down as far as possible (as far as is implemented, not to mention) paths for which the query formula \emph{do not} hold.
+
+It's important to note that this functionality is in a complete state. Consider the case for checking $M \models \lnot(T U p)$. If the formula were found to \emph{hold} on the start state - the current implementation of the counterexample generator would observe the fact that the not formula is true and simply output the current path (only the initial state).
+
+In order to further complete the counterexample generator functions, one would need to implement a more generic search method in terms of successor states. Upon every evaluation, add more nodes to the list of successor states to process. Perhaps the furthest state from the initial state (that doesn't repeat on a path already encountered) should be the point at which the counterexample path is returned.
+
+Another note, our counterexample trace only returns a list of states, no transitions. Correcting this would involve modifying the "ComputationPathNode" class to include actions, then when the recursive search is finished and we're backing up the tree of nodes (which we already currently do) we can add transitions to the list instead. A list of transitions would be a much more intuitive way to describe a trace than a list of states - and more importantly, the list of states on its own does not describe whether or not the actions were in the action set restrictions defined on the path operators.
+
+\section{Testing}\label{sec:testing}
+In order to run the full test suite, see the testing instructions in section \ref{sec:build}.
+
+\subsection{Examples}
+Some notable examples of test cases which show correct behaviour:
+\\\\
+The "branch" test model is a simple tree shape, all paths are followed with a "a" action, and at the end of \emph{two} of the branches there is a single node for which "q" holds, "b" actions always lead to states in which "q" hold. There is also the label "neverq" on the root of the path for which q never appears.
+\\\\
+The constraint for the branch test model is very simple, constraint1 only allows paths for which "$\lnot$neverq" holds, and constraint2 only allows paths for which "neverq" holds
+
+\begin{itemize}
+	\item Action set restrictions changing the outcome of the marking algorithm, see tests: \emph{branchCTL5}, and \emph{branchCTL6} also with their constrained variants. CTL5 $ = EF_a q$, CTL5 is not satisfied for the test branchCTL5, or in any of the constrained variants. This is because "q" labeled states can only be reached via actions in b. Hence, CTL6 $ = EF_b q$ always holds, \emph{except when the path is constrained by constraint2}. By constraining the path to that labeled "neverq" (with good reason), the formula $EF_b q$ will not never hold - and that's exactly what we see.
+    \item \emph{branchCTL3} is an example of an \emph{invariant}, $AG p \lor q$. "branchCTL3" always holds, even if constrained.
+\end{itemize}
+
+\section{Evaluation}\label{sec:evaluation}
+\subsection{Analysis on Approach}
+It is \emph{definitely apparent} that a depth-first-search should have been implemented first, in order to get traces working properly. \emph{Then} it might have made more sense to use the labeling algorithm as a kind of heuristic, such as for constraints or for non-complex formula.
+\subsection{Correctness \& Completeness}
+The correctness of a model checker is of extreme importance if it is to be used to aid in problems where finding and eliminating errors is critical. \citeauthor{Berard:2010:SSV:1965314} reason their way to the conclusion, in their book, that their labeling algorithm is correct. However, given the potential for information loss between implementation - and the fact that the algorithm had to be \emph{adapted} in order to fit asCTL - we certainly can't reason the same way about the algorithm implemented in the presented solution. At least, not without some serious rigor.
+
+With regards to testing: there are certainly many more areas that should be tested to assure confidence in the model checker - as many corner cases as possible. In particular the mutual exclusion examples mentioned in the specification. If the model checker were to manage to compute properties about real-world examples \emph{such as} mutual exclusion, it would aid our confidence in it greatly.
+\subsection{Interesting Features}
+The labeling algorithm is certainly a neat solution for quickly solving CTL-like formulae. It has the potential to be very fast compared to a depth-first search on it's own. At the least, it should be very useful as a heuristic, in particular this is already the case in that we use the labeling algorithm to mark for the constraint formula before doing so with the query formula as well.
+
+\nocite{*}
+\bibliography{ref}
+\bibliographystyle{apalike}
+
+\end{document}
